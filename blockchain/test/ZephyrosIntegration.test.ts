@@ -60,8 +60,8 @@ describe("Zephyros Integration Tests", function () {
     );
     
     // 5. Set up users with appropriate roles
-    await verificationSystem.connect(admin).verifyParticipant(manufacturer.address, MANUFACTURER_ROLE);
-    await verificationSystem.connect(admin).verifyParticipant(supplier.address, SUPPLIER_ROLE);
+    await verificationSystem["verifyParticipant"](manufacturer.address, MANUFACTURER_ROLE);
+    await verificationSystem["verifyParticipant"](supplier.address, SUPPLIER_ROLE);
     
     // Generate a unique product ID
     productId = keccak256(toUtf8Bytes(`Product-${Date.now()}`));
@@ -165,7 +165,7 @@ describe("Zephyros Integration Tests", function () {
     
     it("Should block product registration after manufacturer verification is revoked", async function() {
       // Revoke manufacturer verification
-      await verificationSystem.connect(admin).revokeVerification(manufacturer.address);
+      await verificationSystem["revokeVerification"](manufacturer.address);
       
       // Try to register another product
       const newProductId = keccak256(toUtf8Bytes(`NewProduct-${Date.now()}`));
@@ -190,7 +190,7 @@ describe("Zephyros Integration Tests", function () {
       );
       
       // Revoke supplier verification
-      await verificationSystem.connect(admin).revokeVerification(supplier.address);
+      await verificationSystem["revokeVerification"](supplier.address);
       
       // Try to add another milestone
       await expect(
@@ -214,8 +214,8 @@ describe("Zephyros Integration Tests", function () {
       );
       
       // Revoke both manufacturer and supplier
-      await verificationSystem.connect(admin).revokeVerification(manufacturer.address);
-      await verificationSystem.connect(admin).revokeVerification(supplier.address);
+      await verificationSystem["revokeVerification"](manufacturer.address);
+      await verificationSystem["revokeVerification"](supplier.address);
       
       // Consumer should still be able to query data
       const productDetails = await consumerInterface.connect(consumer).getProductDetails(revokedProductId);

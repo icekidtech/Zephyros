@@ -30,8 +30,8 @@ describe("SupplyChainTracker", function () {
     SUPPLIER_ROLE = await verificationSystem.SUPPLIER_ROLE();
     
     // Verify participants in VerificationSystem
-    await verificationSystem.verifyParticipant(manufacturer.address, MANUFACTURER_ROLE);
-    await verificationSystem.verifyParticipant(supplier.address, SUPPLIER_ROLE);
+    await verificationSystem["verifyParticipant"](manufacturer.address, MANUFACTURER_ROLE);
+    await verificationSystem["verifyParticipant"](supplier.address, SUPPLIER_ROLE);
     
     // Deploy ProductRegistry
     const ProductRegistryFactory = await ethers.getContractFactory("ProductRegistry");
@@ -61,7 +61,7 @@ describe("SupplyChainTracker", function () {
     });
 
     it("Should store the correct VerificationSystem address", async function() {
-      expect(await supplyChainTracker.verificationSystemAddress()).to.equal(await verificationSystem.getAddress());
+      expect(await supplyChainTracker.verificationSystem()).to.equal(await verificationSystem.getAddress());
     });
 
     it("Should have the correct SUPPLIER_ROLE value", async function() {
@@ -182,7 +182,7 @@ describe("SupplyChainTracker", function () {
 
     it("Should revert when supplier's verification is revoked", async function () {
       // Revoke supplier verification
-      await verificationSystem.connect(admin).revokeVerification(supplier.address);
+      await verificationSystem["revokeVerification"](supplier.address);
       
       const timestamp = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
       

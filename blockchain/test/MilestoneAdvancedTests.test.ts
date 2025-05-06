@@ -55,8 +55,8 @@ describe("Milestone Advanced Tests", function () {
     );
     
     // Verify participants
-    await verificationSystem.connect(admin).verifyParticipant(manufacturer.address, MANUFACTURER_ROLE);
-    await verificationSystem.connect(admin).verifyParticipant(supplier.address, SUPPLIER_ROLE);
+    await verificationSystem["verifyParticipant"](manufacturer.address, MANUFACTURER_ROLE);
+    await verificationSystem["verifyParticipant"](supplier.address, SUPPLIER_ROLE);
     
     // Generate a unique product ID and register product
     productId = keccak256(toUtf8Bytes(`Product-${Date.now()}`));
@@ -223,7 +223,7 @@ describe("Milestone Advanced Tests", function () {
       ).to.be.revertedWithCustomError(supplyChainTracker, "NotVerifiedSupplier");
       
       // Re-verify supplier
-      await verificationSystem.connect(admin).verifyParticipant(supplier.address, SUPPLIER_ROLE);
+      await verificationSystem.connect(admin)["verifyParticipant"](supplier.address, SUPPLIER_ROLE);
       
       // Now should be able to add milestone
       await supplyChainTracker.connect(supplier).addMilestone(
