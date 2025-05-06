@@ -136,7 +136,10 @@ contract SupplyChainTracker is Ownable {
      * @dev Gets a specific milestone for a product by index
      * @param productId The product's unique identifier
      * @param index The milestone index to retrieve
-     * @return The Milestone struct
+     * @return milestoneType The type of milestone
+     * @return details Additional information about the milestone
+     * @return timestamp Unix timestamp when the milestone occurred
+     * @return participant Address of the participant who added the milestone
      */
     function getMilestoneAtIndex(bytes32 productId, uint256 index) external view returns (
         string memory milestoneType,
