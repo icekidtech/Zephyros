@@ -1,24 +1,30 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+/**
+ * @title IVerificationSystem
+ * @dev Interface for VerificationSystem contract
+ */
+interface IVerificationSystem {
+    function getParticipantStatus(address participant) external view returns (bytes32 role, bool isVerified, uint256 verifiedAt);
+    function isVerifiedForRole(address participant, bytes32 role) external view returns (bool);
+}
 
 /**
  * @title ProductRegistry
  * @dev A contract for registering products in the Zephyros supply chain verification system
  * @custom:dev-run-script ./scripts/deploy_product_registry.ts
  */
-contract ProductRegistry is Ownable {
-    // Add constructor to pass msg.sender to Ownable as initialOwner
-    constructor() Ownable(msg.sender) {
-        // Constructor can be empty as we're just passing msg.sender to Ownable
-    }
-
+contract ProductRegistry {
+    // Role constant - must match VerificationSystem's definition
+    bytes32 public constant MANUFACTURER_ROLE = keccak256("MANUFACTURER_ROLE");
+    
     // Custom errors for gas-efficient reverts
     error ProductAlreadyExists(bytes32 productId);
     error InvalidManufacturer(address manufacturer);
     error EmptyProductName();
     error ProductNotFound(bytes32 productId);
+    error NotVerifiedManufacturer(address sender);
 
     // Product struct to store product details
     struct Product {
@@ -33,9 +39,21 @@ contract ProductRegistry is Ownable {
     
     // Array to track all productIds
     bytes32[] private productIds;
-
+    
+    // Reference to VerificationSystem contract
+    IVerificationSystem public immutable verificationSystem;
+    
     // Event emitted when a new product is registered
     event ProductRegistered(bytes32 indexed productId, address indexed manufacturer);
+
+    /**
+     * @dev Constructor sets the address of the VerificationSystem contract
+     * @param _verificationSystemAddress Address of the deployed VerificationSystem contract
+     */
+    constructor(address _verificationSystemAddress) {
+        require(_verificationSystemAddress != address(0), "Invalid VerificationSystem address");
+        verificationSystem = IVerificationSystem(_verificationSystemAddress);
+    }
 
     /**
      * @dev Registers a new product in the registry
@@ -47,7 +65,12 @@ contract ProductRegistry is Ownable {
         bytes32 productId,
         string calldata name,
         address manufacturer
-    ) external onlyOwner {
+    ) external {
+        // Check that sender is a verified manufacturer
+        if (!verificationSystem.isVerifiedForRole(msg.sender, MANUFACTURER_ROLE)) {
+            revert NotVerifiedManufacturer(msg.sender);
+        }
+        
         // Validate inputs
         if (products[productId].createdAt != 0) {
             revert ProductAlreadyExists(productId);
@@ -77,7 +100,10 @@ contract ProductRegistry is Ownable {
     /**
      * @dev Retrieves details of a specific product
      * @param productId The unique identifier of the product to retrieve
-     * @return Product details (productId, name, manufacturer, createdAt)
+     * @return productId The product's ID
+     * @return name The product's name
+     * @return manufacturer The manufacturer's address
+     * @return createdAt When the product was created
      */
     function getProductDetails(bytes32 productId) 
         external 
