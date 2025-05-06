@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-
 /**
  * @title IProductRegistry
  * @dev Interface for ProductRegistry contract
@@ -13,16 +11,29 @@ interface IProductRegistry {
 }
 
 /**
+ * @title IVerificationSystem
+ * @dev Interface for VerificationSystem contract
+ */
+interface IVerificationSystem {
+    function getParticipantStatus(address participant) external view returns (bytes32 role, bool isVerified, uint256 verifiedAt);
+    function isVerifiedForRole(address participant, bytes32 role) external view returns (bool);
+}
+
+/**
  * @title SupplyChainTracker
  * @dev A contract for tracking supply chain milestones for products registered in ProductRegistry
  * @custom:dev-run-script ./scripts/deploy_supply_chain_tracker.ts
  */
-contract SupplyChainTracker is Ownable {
+contract SupplyChainTracker {
+    // Role constant - must match VerificationSystem's definition
+    bytes32 public constant SUPPLIER_ROLE = keccak256("SUPPLIER_ROLE");
+    
     // Custom errors for gas-efficient reverts
     error ProductNotFound(bytes32 productId);
     error InvalidTimestamp(uint256 timestamp);
     error EmptyMilestoneType();
     error EmptyMilestoneDetails();
+    error NotVerifiedSupplier(address sender);
     
     // Milestone struct to store milestone details
     struct Milestone {
@@ -32,8 +43,9 @@ contract SupplyChainTracker is Ownable {
         address participant;
     }
 
-    // ProductRegistry contract reference
+    // Contract references
     IProductRegistry public immutable productRegistry;
+    IVerificationSystem public immutable verificationSystem;
     
     // Nested mapping from productId to array of Milestone structs
     mapping(bytes32 => Milestone[]) private productMilestones;
@@ -46,12 +58,15 @@ contract SupplyChainTracker is Ownable {
     );
 
     /**
-     * @dev Constructor sets the ProductRegistry contract address
+     * @dev Constructor sets the addresses of ProductRegistry and VerificationSystem contracts
      * @param _productRegistryAddress Address of the deployed ProductRegistry contract
+     * @param _verificationSystemAddress Address of the deployed VerificationSystem contract
      */
-    constructor(address _productRegistryAddress) Ownable(msg.sender) {
+    constructor(address _productRegistryAddress, address _verificationSystemAddress) {
         require(_productRegistryAddress != address(0), "Invalid ProductRegistry address");
+        require(_verificationSystemAddress != address(0), "Invalid VerificationSystem address");
         productRegistry = IProductRegistry(_productRegistryAddress);
+        verificationSystem = IVerificationSystem(_verificationSystemAddress);
     }
 
     /**
@@ -66,7 +81,12 @@ contract SupplyChainTracker is Ownable {
         string calldata milestoneType,
         string calldata details,
         uint256 timestamp
-    ) external onlyOwner {
+    ) external {
+        // Check that sender is a verified supplier
+        if (!verificationSystem.isVerifiedForRole(msg.sender, SUPPLIER_ROLE)) {
+            revert NotVerifiedSupplier(msg.sender);
+        }
+        
         // Verify product exists in ProductRegistry
         try productRegistry.getProductDetails(productId) returns (bytes32, string memory, address, uint256) {
             // Product exists, continue with validation
