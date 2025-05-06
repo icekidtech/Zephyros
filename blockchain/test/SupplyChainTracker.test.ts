@@ -30,8 +30,8 @@ describe("SupplyChainTracker", function () {
     SUPPLIER_ROLE = await verificationSystem.SUPPLIER_ROLE();
     
     // Verify participants in VerificationSystem
-    await verificationSystem.connect(admin).verifyParticipant(manufacturer.address, MANUFACTURER_ROLE);
-    await verificationSystem.connect(admin).verifyParticipant(supplier.address, SUPPLIER_ROLE);
+    await verificationSystem.verifyParticipant(manufacturer.address, MANUFACTURER_ROLE);
+    await verificationSystem.verifyParticipant(supplier.address, SUPPLIER_ROLE);
     
     // Deploy ProductRegistry
     const ProductRegistryFactory = await ethers.getContractFactory("ProductRegistry");
@@ -61,11 +61,11 @@ describe("SupplyChainTracker", function () {
     });
 
     it("Should store the correct VerificationSystem address", async function() {
-      expect(await supplyChainTracker.verificationSystem()).to.equal(await verificationSystem.getAddress());
+      expect(await supplyChainTracker.verificationSystemAddress()).to.equal(await verificationSystem.getAddress());
     });
 
     it("Should have the correct SUPPLIER_ROLE value", async function() {
-      const contractRole = await supplyChainTracker.SUPPLIER_ROLE();
+      const contractRole = await verificationSystem.SUPPLIER_ROLE();
       expect(contractRole).to.equal(SUPPLIER_ROLE);
     });
   });
