@@ -9,6 +9,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @custom:dev-run-script ./scripts/deploy_product_registry.ts
  */
 contract ProductRegistry is Ownable {
+    // Add constructor to pass msg.sender to Ownable as initialOwner
+    constructor() Ownable(msg.sender) {
+        // Constructor can be empty as we're just passing msg.sender to Ownable
+    }
+
     // Custom errors for gas-efficient reverts
     error ProductAlreadyExists(bytes32 productId);
     error InvalidManufacturer(address manufacturer);

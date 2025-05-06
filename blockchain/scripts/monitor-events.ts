@@ -1,4 +1,4 @@
-import { Avalanche } from "@avalabs/avalanchejs";
+const { Avalanche } = require("@avalabs/avalanchejs");
 import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
