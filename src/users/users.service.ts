@@ -1,16 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { User } from './user.schema';
+import { UserRoles } from './userRoles.enum';
 
 @Injectable()
 export class UsersService {
   constructor(@InjectModel('User') private userModel: Model<User>) {}
 
-  async register(email: string, password: string, roles: string[]): Promise<User> {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new this.userModel({ email, password: hashedPassword, roles });
+  async createUser(payload: User): Promise<User> {
+    const { email, password, role } = payload;
+    const existingUser = await this.findByEmail(email);
+    if (existingUser) {
+      throw new ConflictException('Email is already in use');
+    }
+
+    const hashedPassword = await this.hashPassword(password);
+    const newUser = new this.userModel({ email, password: hashedPassword, role });
     return newUser.save();
   }
 
@@ -24,5 +31,9 @@ export class UsersService {
       return user;
     }
     return null;
+  }
+
+  private async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 10);
   }
 }
