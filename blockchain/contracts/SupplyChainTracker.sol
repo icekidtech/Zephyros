@@ -15,7 +15,6 @@ interface IProductRegistry {
  * @dev Interface for VerificationSystem contract
  */
 interface IVerificationSystem {
-    function getParticipantStatus(address participant) external view returns (bytes32 role, bool isVerified, uint256 verifiedAt);
     function isVerifiedForRole(address participant, bytes32 role) external view returns (bool);
 }
 
@@ -25,15 +24,15 @@ interface IVerificationSystem {
  * @custom:dev-run-script ./scripts/deploy_supply_chain_tracker.ts
  */
 contract SupplyChainTracker {
-    // Role constant - must match VerificationSystem's definition
-    bytes32 public constant SUPPLIER_ROLE = keccak256("SUPPLIER_ROLE");
-    
     // Custom errors for gas-efficient reverts
     error ProductNotFound(bytes32 productId);
     error InvalidTimestamp(uint256 timestamp);
     error EmptyMilestoneType();
     error EmptyMilestoneDetails();
-    error NotVerifiedSupplier(address sender);
+    error NotVerifiedSupplier(address caller);
+    
+    // Role definition - must match the one in VerificationSystem
+    bytes32 public constant SUPPLIER_ROLE = keccak256("SUPPLIER_ROLE");
     
     // Milestone struct to store milestone details
     struct Milestone {
@@ -58,7 +57,7 @@ contract SupplyChainTracker {
     );
 
     /**
-     * @dev Constructor sets the addresses of ProductRegistry and VerificationSystem contracts
+     * @dev Constructor sets the ProductRegistry and VerificationSystem contract addresses
      * @param _productRegistryAddress Address of the deployed ProductRegistry contract
      * @param _verificationSystemAddress Address of the deployed VerificationSystem contract
      */
