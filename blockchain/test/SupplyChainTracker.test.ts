@@ -4,7 +4,7 @@ import { ProductRegistry, SupplyChainTracker, VerificationSystem } from "../type
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { keccak256, toUtf8Bytes } from "ethers";
 
-describe("SupplyChainTracker with VerificationSystem", function () {
+describe("SupplyChainTracker", function () {
   let productRegistry: ProductRegistry;
   let supplyChainTracker: SupplyChainTracker;
   let verificationSystem: VerificationSystem;
@@ -12,36 +12,37 @@ describe("SupplyChainTracker with VerificationSystem", function () {
   let manufacturer: SignerWithAddress;
   let supplier: SignerWithAddress;
   let nonSupplier: SignerWithAddress;
-  let productId: string;
+  
   let MANUFACTURER_ROLE: string;
   let SUPPLIER_ROLE: string;
+  let productId: string;
 
   beforeEach(async function () {
     // Get signers
     [admin, manufacturer, supplier, nonSupplier] = await ethers.getSigners();
     
-    // Deploy VerificationSystem first
+    // Deploy VerificationSystem
     const VerificationSystemFactory = await ethers.getContractFactory("VerificationSystem");
     verificationSystem = await VerificationSystemFactory.connect(admin).deploy();
     
-    // Get the roles
+    // Get role constants
     MANUFACTURER_ROLE = await verificationSystem.MANUFACTURER_ROLE();
     SUPPLIER_ROLE = await verificationSystem.SUPPLIER_ROLE();
     
-    // Deploy ProductRegistry with VerificationSystem address
+    // Verify participants in VerificationSystem
+    await verificationSystem.connect(admin).verifyParticipant(manufacturer.address, MANUFACTURER_ROLE);
+    await verificationSystem.connect(admin).verifyParticipant(supplier.address, SUPPLIER_ROLE);
+    
+    // Deploy ProductRegistry
     const ProductRegistryFactory = await ethers.getContractFactory("ProductRegistry");
     productRegistry = await ProductRegistryFactory.connect(admin).deploy(await verificationSystem.getAddress());
     
-    // Deploy SupplyChainTracker with both addresses
+    // Deploy SupplyChainTracker with ProductRegistry address
     const SupplyChainTrackerFactory = await ethers.getContractFactory("SupplyChainTracker");
     supplyChainTracker = await SupplyChainTrackerFactory.connect(admin).deploy(
       await productRegistry.getAddress(),
       await verificationSystem.getAddress()
     );
-    
-    // Verify participants
-    await verificationSystem.connect(admin).verifyParticipant(manufacturer.address, MANUFACTURER_ROLE);
-    await verificationSystem.connect(admin).verifyParticipant(supplier.address, SUPPLIER_ROLE);
     
     // Create a unique product ID
     productId = keccak256(toUtf8Bytes(`Product-${Date.now()}`));
