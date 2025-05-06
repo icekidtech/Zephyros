@@ -1,8 +1,27 @@
-// Initial implementation for UserSchema
-import { Schema } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
 
-export const UserSchema = new Schema({
-  username: { type: String, required: true },
-  email: { type: String, required: true },
-  password: { type: String, required: true },
-});
+export type UserDocument = User & Document;
+
+export enum UserRole {
+  ADMIN = 'admin',
+  ORGANIZATION = 'organization',
+  VERIFIER = 'verifier',
+}
+
+@Schema({ timestamps: true })
+export class User {
+  @Prop({ required: true })
+  fullName: string;
+
+  @Prop({ required: true, unique: true })
+  email: string;
+
+  @Prop({ required: true })
+  password: string;
+
+  @Prop({ enum: UserRole, required: true })
+  role: UserRole;
+}
+
+export const UserSchema = SchemaFactory.createForClass(User);

@@ -11,6 +11,11 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
+    "plugins": [
+      {
+        "name":"@nestjs/swagger",
+      }
+    ],
     "skipLibCheck": true,
     "strictNullChecks": false,
     "noImplicitAny": false,
