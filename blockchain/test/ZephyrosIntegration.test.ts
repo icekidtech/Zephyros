@@ -1,75 +1,65 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { 
-  ProductRegistry,
-  SupplyChainTracker,
+  ProductRegistry, 
+  SupplyChainTracker, 
   VerificationSystem,
   ConsumerInterface
 } from "../typechain-types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { keccak256, toUtf8Bytes } from "ethers";
 
-describe("Zephyros System Integration", function () {
-  // Contract instances
+describe("Zephyros Integration Tests", function () {
   let productRegistry: ProductRegistry;
   let supplyChainTracker: SupplyChainTracker;
   let verificationSystem: VerificationSystem;
   let consumerInterface: ConsumerInterface;
   
-  // Signers
   let admin: SignerWithAddress;
   let manufacturer: SignerWithAddress;
   let supplier: SignerWithAddress;
   let consumer: SignerWithAddress;
   
-  // Test data
-  let productId: string;
-  let productName = "Premium Pharmaceutical Drug";
-  let ADMIN_ROLE: string;
   let MANUFACTURER_ROLE: string;
   let SUPPLIER_ROLE: string;
+  
+  let productId: string;
+  let productName: string = "Authentic Product";
 
-  before(async function () {
+  beforeEach(async function () {
     // Get signers
     [admin, manufacturer, supplier, consumer] = await ethers.getSigners();
     
-    // Step 1: Deploy VerificationSystem
-    console.log("Deploying VerificationSystem...");
+    // Deploy contracts in proper sequence
+    console.log("Deploying contracts...");
+    
+    // 1. Deploy VerificationSystem first
     const VerificationSystemFactory = await ethers.getContractFactory("VerificationSystem");
     verificationSystem = await VerificationSystemFactory.connect(admin).deploy();
-    console.log(`VerificationSystem deployed to ${await verificationSystem.getAddress()}`);
     
     // Get role constants
-    ADMIN_ROLE = await verificationSystem.ADMIN_ROLE();
     MANUFACTURER_ROLE = await verificationSystem.MANUFACTURER_ROLE();
     SUPPLIER_ROLE = await verificationSystem.SUPPLIER_ROLE();
     
-    // Step 2: Deploy ProductRegistry with VerificationSystem address
-    console.log("Deploying ProductRegistry...");
+    // 2. Deploy ProductRegistry with VerificationSystem address
     const ProductRegistryFactory = await ethers.getContractFactory("ProductRegistry");
     productRegistry = await ProductRegistryFactory.connect(admin).deploy(await verificationSystem.getAddress());
-    console.log(`ProductRegistry deployed to ${await productRegistry.getAddress()}`);
     
-    // Step 3: Deploy SupplyChainTracker with ProductRegistry and VerificationSystem addresses
-    console.log("Deploying SupplyChainTracker...");
+    // 3. Deploy SupplyChainTracker with ProductRegistry and VerificationSystem addresses
     const SupplyChainTrackerFactory = await ethers.getContractFactory("SupplyChainTracker");
     supplyChainTracker = await SupplyChainTrackerFactory.connect(admin).deploy(
       await productRegistry.getAddress(),
       await verificationSystem.getAddress()
     );
-    console.log(`SupplyChainTracker deployed to ${await supplyChainTracker.getAddress()}`);
     
-    // Step 4: Deploy ConsumerInterface with ProductRegistry and SupplyChainTracker addresses
-    console.log("Deploying ConsumerInterface...");
+    // 4. Deploy ConsumerInterface with ProductRegistry and SupplyChainTracker addresses
     const ConsumerInterfaceFactory = await ethers.getContractFactory("ConsumerInterface");
     consumerInterface = await ConsumerInterfaceFactory.connect(admin).deploy(
       await productRegistry.getAddress(),
       await supplyChainTracker.getAddress()
     );
-    console.log(`ConsumerInterface deployed to ${await consumerInterface.getAddress()}`);
     
-    // Step 5: Verify manufacturer and supplier
-    console.log("Verifying participants...");
+    // 5. Set up users with appropriate roles
     await verificationSystem.connect(admin).verifyParticipant(manufacturer.address, MANUFACTURER_ROLE);
     await verificationSystem.connect(admin).verifyParticipant(supplier.address, SUPPLIER_ROLE);
     
@@ -168,59 +158,77 @@ describe("Zephyros System Integration", function () {
       // Register product with verified manufacturer
       await productRegistry.connect(manufacturer).registerProduct(
         revokedProductId,
-        "Revocation Test Product",
+        "Product for Revocation Tests",
         manufacturer.address
       );
     });
-
-    it("Should prevent revoked manufacturer from registering products", async function() {
+    
+    it("Should block product registration after manufacturer verification is revoked", async function() {
       // Revoke manufacturer verification
       await verificationSystem.connect(admin).revokeVerification(manufacturer.address);
       
-      // Try to register a product with revoked manufacturer role
+      // Try to register another product
       const newProductId = keccak256(toUtf8Bytes(`NewProduct-${Date.now()}`));
+      
       await expect(
         productRegistry.connect(manufacturer).registerProduct(
           newProductId,
-          "New Test Product",
+          "Product After Revocation",
           manufacturer.address
         )
       ).to.be.revertedWithCustomError(productRegistry, "NotVerifiedManufacturer");
-      
-      // Re-verify the manufacturer to maintain state for other tests
-      await verificationSystem.connect(admin).verifyParticipant(manufacturer.address, MANUFACTURER_ROLE);
     });
-
-    it("Should prevent revoked supplier from adding milestones", async function() {
-      // First add a milestone as verified supplier
+    
+    it("Should block milestone addition after supplier verification is revoked", async function() {
+      // Add a milestone first
       const timestamp = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
       await supplyChainTracker.connect(supplier).addMilestone(
         revokedProductId,
         "Manufactured",
-        "Manufactured at location X",
+        "Initial milestone before revocation",
         timestamp
       );
       
-      // Now revoke supplier verification
+      // Revoke supplier verification
       await verificationSystem.connect(admin).revokeVerification(supplier.address);
       
-      // Try to add another milestone with revoked supplier role
+      // Try to add another milestone
       await expect(
         supplyChainTracker.connect(supplier).addMilestone(
           revokedProductId,
-          "Shipped",
-          "Shipped to destination Y",
-          timestamp - 1800 // 30 minutes later
+          "Packaged",
+          "After revocation milestone",
+          timestamp - 1800
         )
       ).to.be.revertedWithCustomError(supplyChainTracker, "NotVerifiedSupplier");
+    });
+    
+    it("Should still allow consumers to query products after role revocations", async function() {
+      // Add a milestone
+      const timestamp = Math.floor(Date.now() / 1000) - 3600;
+      await supplyChainTracker.connect(supplier).addMilestone(
+        revokedProductId,
+        "Manufactured",
+        "Initial milestone",
+        timestamp
+      );
       
-      // Re-verify the supplier to maintain state for other tests
-      await verificationSystem.connect(admin).verifyParticipant(supplier.address, SUPPLIER_ROLE);
+      // Revoke both manufacturer and supplier
+      await verificationSystem.connect(admin).revokeVerification(manufacturer.address);
+      await verificationSystem.connect(admin).revokeVerification(supplier.address);
+      
+      // Consumer should still be able to query data
+      const productDetails = await consumerInterface.connect(consumer).getProductDetails(revokedProductId);
+      expect(productDetails[0]).to.equal(revokedProductId);
+      
+      const milestones = await consumerInterface.connect(consumer).getProductMilestones(revokedProductId);
+      expect(milestones.length).to.equal(1);
+      expect(milestones[0].milestoneType).to.equal("Manufactured");
     });
   });
 
-  describe("Error Handling and Edge Cases", function() {
-    it("Should reject operations on non-existent products", async function() {
+  describe("Error Handling", function() {
+    it("Should properly handle non-existent product queries", async function() {
       const nonExistentProductId = keccak256(toUtf8Bytes("NonExistentProduct"));
       
       // Try to query non-existent product via ConsumerInterface
@@ -247,6 +255,7 @@ describe("Zephyros System Integration", function () {
     it("Should reject invalid milestone data", async function() {
       // Try to add milestone with future timestamp
       const futureTimestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour in future
+      
       await expect(
         supplyChainTracker.connect(supplier).addMilestone(
           productId,
