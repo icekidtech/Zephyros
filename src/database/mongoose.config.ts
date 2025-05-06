@@ -1,4 +1,8 @@
 // Initial implementation for MongooseConfig
 export const mongooseConfig = {
-  uri: 'mongodb://localhost:27017/your-database',
+  uri: process.env.MONGO_URI,
+  options: {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  },
 };
