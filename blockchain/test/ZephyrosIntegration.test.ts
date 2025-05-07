@@ -253,15 +253,22 @@ describe("Zephyros Integration Tests", function () {
     });
 
     it("Should reject invalid milestone data", async function() {
+      // First register a product
+      await productRegistry.connect(manufacturer).registerProduct(
+        productId,
+        "Test Product",
+        manufacturer.address
+      );
+
       // Try to add milestone with future timestamp
       const futureTimestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour in future
       
       await expect(
         supplyChainTracker.connect(supplier).addMilestone(
-          productId,
-          "Future Milestone",
-          "This is from the future",
-          futureTimestamp
+          productId, // use the registered productId
+          "Shipped",
+          "Details",
+          futureTimestamp // Invalid timestamp
         )
       ).to.be.revertedWithCustomError(supplyChainTracker, "InvalidTimestamp");
       

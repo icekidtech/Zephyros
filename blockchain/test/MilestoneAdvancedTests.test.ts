@@ -278,7 +278,7 @@ describe("Milestone Advanced Tests", function () {
           "Empty milestone type",
           timestamp
         )
-      ).to.be.revertedWithCustomError(supplyChainTracker, "InvalidMilestoneType");
+      ).to.be.revertedWithCustomError(supplyChainTracker, "EmptyMilestoneType");
     });
   });
 });
