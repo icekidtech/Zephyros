@@ -1,25 +1,19 @@
+// src/products/schemas/product.schema.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
-@Schema()
-export class Product extends Document {
-  @Prop({ required: true, index: true })
+export type ProductDocument = Product & Document;
+
+@Schema({ timestamps: true })
+export class Product {
+  @Prop({ required: true })
   name: string;
 
-  @Prop({ required: true })
-  price: number;
-
   @Prop()
-  description: string;
+  description?: string;
 
   @Prop({ type: Types.ObjectId, ref: 'Organization', required: true })
-  organizationId: Types.ObjectId;
-
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  createdBy: Types.ObjectId;
-
-  @Prop({ type: [Types.ObjectId], ref: 'Milestone' })
-  milestones: Types.ObjectId[];
+  organization: Types.ObjectId;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);

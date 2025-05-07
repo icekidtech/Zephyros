@@ -17,7 +17,7 @@ export class UserController {
   }
 
 
-  @Post('login')
+  @Post('/login')
   @ApiOperation({ summary: 'Login an existing user' })
   async login(@Body() loginUserDto: LoginUserDto) {
     return this.userService.logIn(loginUserDto);
