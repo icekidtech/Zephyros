@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { ProductRegistry, SupplyChainTracker, ConsumerInterface } from "../typechain-types";
+import { ProductRegistry, SupplyChainTracker, ConsumerInterface, VerificationSystem } from "../typechain-types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { keccak256, toUtf8Bytes } from "ethers";
 
@@ -8,6 +8,7 @@ describe("ConsumerInterface", function () {
   let productRegistry: ProductRegistry;
   let supplyChainTracker: SupplyChainTracker;
   let consumerInterface: ConsumerInterface;
+  let verificationSystem: VerificationSystem;
   let owner: SignerWithAddress;
   let consumer: SignerWithAddress;
   let manufacturer: SignerWithAddress;
@@ -17,14 +18,21 @@ describe("ConsumerInterface", function () {
     // Get signers
     [owner, consumer, manufacturer] = await ethers.getSigners();
     
-    // Deploy ProductRegistry
-    const ProductRegistryFactory = await ethers.getContractFactory("ProductRegistry");
-    productRegistry = await ProductRegistryFactory.connect(owner).deploy();
+    // Deploy VerificationSystem first
+    const VerificationSystemFactory = await ethers.getContractFactory("VerificationSystem");
+    verificationSystem = await VerificationSystemFactory.connect(owner).deploy();
     
-    // Deploy SupplyChainTracker
+    // Deploy ProductRegistry with VerificationSystem address
+    const ProductRegistryFactory = await ethers.getContractFactory("ProductRegistry");
+    productRegistry = await ProductRegistryFactory.connect(owner).deploy(
+      await verificationSystem.getAddress()
+    );
+    
+    // Deploy SupplyChainTracker with ProductRegistry and VerificationSystem addresses
     const SupplyChainTrackerFactory = await ethers.getContractFactory("SupplyChainTracker");
     supplyChainTracker = await SupplyChainTrackerFactory.connect(owner).deploy(
-      await productRegistry.getAddress()
+      await productRegistry.getAddress(),
+      await verificationSystem.getAddress()
     );
     
     // Deploy ConsumerInterface
@@ -37,8 +45,11 @@ describe("ConsumerInterface", function () {
     // Create a unique product ID
     productId = keccak256(toUtf8Bytes(`Product-${Date.now()}`));
     
-    // Register a product in ProductRegistry
-    await productRegistry.connect(owner).registerProduct(
+    // Register a product in ProductRegistry - verify manufacturer first
+    await verificationSystem.connect(owner)["verifyParticipant"](manufacturer.address, await verificationSystem.MANUFACTURER_ROLE());
+    
+    // Then register the product
+    await productRegistry.connect(manufacturer).registerProduct(
       productId,
       "Test Product",
       manufacturer.address
