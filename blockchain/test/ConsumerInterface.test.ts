@@ -48,6 +48,9 @@ describe("ConsumerInterface", function () {
     // Register a product in ProductRegistry - verify manufacturer first
     await verificationSystem.connect(owner)["verifyParticipant"](manufacturer.address, await verificationSystem.MANUFACTURER_ROLE());
     
+    // ADDED: Verify owner as a supplier so they can add milestones
+    await verificationSystem.connect(owner)["verifyParticipant"](owner.address, await supplyChainTracker.SUPPLIER_ROLE());
+    
     // Then register the product
     await productRegistry.connect(manufacturer).registerProduct(
       productId,
