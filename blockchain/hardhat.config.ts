@@ -5,7 +5,8 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Get private key from environment variable or use a default (DO NOT USE THIS DEFAULT IN PRODUCTION)
-const PRIVATE_KEY = process.env.PRIVATE_KEY || "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const PRIVATE_KEY = process.env.PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000000";
+const FUJI_RPC_URL = process.env.FUJI_RPC_URL || "https://api.avax-test.network/ext/bc/C/rpc";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -24,7 +25,7 @@ const config: HardhatUserConfig = {
     },
     // Avalanche Fuji Testnet
     fuji: {
-      url: "https://api.avax-test.network/ext/bc/C/rpc",
+      url: FUJI_RPC_URL,
       chainId: 43113,
       accounts: [PRIVATE_KEY],
     },
