@@ -1,22 +1,33 @@
 import { ethers } from "hardhat";
+import fs from 'fs';
+import path from 'path';
 
 async function main() {
   console.log("Deploying ConsumerInterface contract...");
   
-  // Get deployed contract addresses
-  const productRegistryAddress = process.env.PRODUCT_REGISTRY_ADDRESS;
-  const supplyChainTrackerAddress = process.env.SUPPLY_CHAIN_TRACKER_ADDRESS;
+  let productRegistryAddress = process.env.PRODUCT_REGISTRY_ADDRESS;
+  let supplyChainTrackerAddress = process.env.SUPPLY_CHAIN_TRACKER_ADDRESS;
   
   if (!productRegistryAddress || !supplyChainTrackerAddress) {
-    console.error("ProductRegistry and/or SupplyChainTracker addresses not found in environment variables");
+    // Try to read from deployed-addresses.json
+    const addressesPath = path.join(__dirname, '../../deployed-addresses.json');
+    if (fs.existsSync(addressesPath)) {
+      const addressesData = fs.readFileSync(addressesPath, 'utf8');
+      const addresses = JSON.parse(addressesData);
+      productRegistryAddress = productRegistryAddress || addresses.ProductRegistry;
+      supplyChainTrackerAddress = supplyChainTrackerAddress || addresses.SupplyChainTracker;
+    }
+  }
+  
+  if (!productRegistryAddress || !supplyChainTrackerAddress) {
+    console.log("Missing required addresses. Please deploy prerequisite contracts first or set environment variables.");
+    if (!productRegistryAddress) console.log("Missing: PRODUCT_REGISTRY_ADDRESS");
+    if (!supplyChainTrackerAddress) console.log("Missing: SUPPLY_CHAIN_TRACKER_ADDRESS");
     process.exit(1);
   }
   
   const ConsumerInterface = await ethers.getContractFactory("ConsumerInterface");
-  const consumerInterface = await ConsumerInterface.deploy(
-    productRegistryAddress, 
-    supplyChainTrackerAddress
-  );
+  const consumerInterface = await ConsumerInterface.deploy(productRegistryAddress, supplyChainTrackerAddress);
   
   await consumerInterface.waitForDeployment();
   const address = await consumerInterface.getAddress();
@@ -31,7 +42,20 @@ async function main() {
   await consumerInterface.deploymentTransaction()?.wait(5);
   console.log("Confirmed!");
   
-  console.log("Deployment completed successfully!");
+  // Save address to deployed-addresses.json
+  let addresses: { ConsumerInterface?: string; ProductRegistry?: string; SupplyChainTracker?: string } = {};
+  const addressesPath = path.join(__dirname, '../../deployed-addresses.json');
+  
+  if (fs.existsSync(addressesPath)) {
+    const addressesData = fs.readFileSync(addressesPath, 'utf8');
+    addresses = JSON.parse(addressesData);
+  }
+  
+  addresses.ConsumerInterface = address;
+  
+  fs.writeFileSync(addressesPath, JSON.stringify(addresses, null, 2));
+  
+  console.log(`Address saved to ${addressesPath}`);
   
   // Log information useful for verification
   console.log("\nContract verification info:");
