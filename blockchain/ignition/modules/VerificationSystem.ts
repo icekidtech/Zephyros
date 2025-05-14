@@ -1,4 +1,6 @@
 import { ethers } from "hardhat";
+import fs from 'fs';
+import path from 'path';
 
 async function main() {
   console.log("Deploying VerificationSystem contract...");
@@ -17,16 +19,20 @@ async function main() {
   await verificationSystem.deploymentTransaction()?.wait(5);
   console.log("Confirmed!");
   
-  // Log role hashes for reference
-  const ADMIN_ROLE = await verificationSystem.ADMIN_ROLE();
-  const MANUFACTURER_ROLE = await verificationSystem.MANUFACTURER_ROLE();
-  const SUPPLIER_ROLE = await verificationSystem.SUPPLIER_ROLE();
+  // Save address to deployed-addresses.json
+  let addresses: { VerificationSystem?: string } = {};
+  const addressesPath = path.join(__dirname, '../../deployed-addresses.json');
   
-  console.log(`ADMIN_ROLE: ${ADMIN_ROLE}`);
-  console.log(`MANUFACTURER_ROLE: ${MANUFACTURER_ROLE}`);
-  console.log(`SUPPLIER_ROLE: ${SUPPLIER_ROLE}`);
+  if (fs.existsSync(addressesPath)) {
+    const addressesData = fs.readFileSync(addressesPath, 'utf8');
+    addresses = JSON.parse(addressesData);
+  }
   
-  console.log("Deployment completed successfully!");
+  addresses.VerificationSystem = address;
+  
+  fs.writeFileSync(addressesPath, JSON.stringify(addresses, null, 2));
+  
+  console.log(`Address saved to ${addressesPath}`);
   
   // Log information useful for verification
   console.log("\nContract verification info:");
