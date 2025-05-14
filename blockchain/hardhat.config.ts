@@ -1,5 +1,6 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
+import "hardhat-ignition";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -27,13 +28,8 @@ const config: HardhatUserConfig = {
     fuji: {
       url: FUJI_RPC_URL,
       chainId: 43113,
-      accounts: [PRIVATE_KEY],
-    },
-    // Avalanche Mainnet
-    avalanche: {
-      url: "https://api.avax.network/ext/bc/C/rpc",
-      chainId: 43114,
-      accounts: [PRIVATE_KEY],
+      accounts: PRIVATE_KEY !== "0x0000000000000000000000000000000000000000000000000000000000000000" ? [PRIVATE_KEY] : [],
+      gasPrice: "auto",
     },
   },
   // Enable gas reporting for optimization purposes
