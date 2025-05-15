@@ -6,8 +6,9 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Get private key from environment variable or use a default (DO NOT USE THIS DEFAULT IN PRODUCTION)
-const PRIVATE_KEY = process.env.PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000000";
-const FUJI_RPC_URL = process.env.FUJI_RPC_URL || "https://api.avax-test.network/ext/bc/C/rpc";
+const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
+const FUJI_RPC_URL = process.env.FUJI_RPC_URL || "";
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -28,7 +29,7 @@ const config: HardhatUserConfig = {
     fuji: {
       url: FUJI_RPC_URL,
       chainId: 43113,
-      accounts: PRIVATE_KEY !== "0x0000000000000000000000000000000000000000000000000000000000000000" ? [PRIVATE_KEY] : [],
+      accounts: PRIVATE_KEY !== "" ? [PRIVATE_KEY] : [],
       gasPrice: "auto",
     },
   },
@@ -39,6 +40,16 @@ const config: HardhatUserConfig = {
     coinmarketcap: process.env.COINMARKETCAP_API_KEY,
     token: "AVAX",
   },
+  // Add etherscan configuration for contract verification
+  etherscan: {
+    apiKey: {
+      avalancheFujiTestnet: ETHERSCAN_API_KEY
+    }
+  },
+  // Enable sourcify verification
+  sourcify: {
+    enabled: true
+  }
 };
 
 export default config;
