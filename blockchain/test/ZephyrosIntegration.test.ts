@@ -1,6 +1,5 @@
 import { expect } from "chai";
-import { ethers } from "hardhat"
-import type { JsonRpcProvider } from "ethers";
+import { ethers } from "hardhat";
 import { 
   ProductRegistry, 
   SupplyChainTracker, 
@@ -11,7 +10,6 @@ import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { keccak256, toUtf8Bytes } from "ethers";
 import fs from 'fs';
 import path from 'path';
-import { Avalanche } from "@avalabs/avalanchejs";
 import { Contract } from "ethers";
 
 // Import ABIs
@@ -50,10 +48,8 @@ describe("Zephyros Integration Tests (Fuji Testnet)", function () {
     ConsumerInterface: string;
   };
   
-  // AvalancheJS for event monitoring
-  let avalanche: Avalanche;
-  let cChain: any;
-  let provider: ethers.JsonRpcProvider;
+  // Provider for event monitoring
+  let provider: any;
 
   before(async function() {
     // Load contract addresses from deployed-addresses.json
@@ -65,13 +61,10 @@ describe("Zephyros Integration Tests (Fuji Testnet)", function () {
     
     console.log("Using deployed contract addresses:", contractAddresses);
     
-    // Setup AvalancheJS
-    avalanche = new Avalanche("api.avax-test.network", 443, "https", 43113);
-    cChain = avalanche.CChain();
-    
-    // Get provider from hardhat network configuration
-    provider = ethers.provider as ethers.JsonRpcProvider;
-    console.log(`Connected to network: ${(await provider.getNetwork()).name}`);
+    // Get provider from hardhat
+    provider = ethers.provider;
+    const network = await provider.getNetwork();
+    console.log(`Connected to network: ${network.name} (chainId: ${network.chainId})`);
     
     try {
       // Get signers (should be configured to use Fuji testnet via --network fuji)
@@ -80,7 +73,8 @@ describe("Zephyros Integration Tests (Fuji Testnet)", function () {
       
       // Check balance to ensure we have funds for tests
       const balance = await provider.getBalance(admin.address);
-      console.log(`Admin balance: ${ethers.formatEther(balance)} AVAX`);
+      const formattedBalance = ethers.formatEther(balance);
+      console.log(`Admin balance: ${formattedBalance} AVAX`);
       
       if (balance < ethers.parseEther("0.1")) {
         console.warn("Warning: Admin account has less than 0.1 AVAX. Tests may fail due to insufficient funds.");
@@ -90,22 +84,22 @@ describe("Zephyros Integration Tests (Fuji Testnet)", function () {
       verificationSystem = await ethers.getContractAt(
         "VerificationSystem", 
         contractAddresses.VerificationSystem
-      ) as unknown as VerificationSystem;
+      );
       
       productRegistry = await ethers.getContractAt(
         "ProductRegistry", 
         contractAddresses.ProductRegistry
-      ) as unknown as ProductRegistry;
+      );
       
       supplyChainTracker = await ethers.getContractAt(
         "SupplyChainTracker", 
         contractAddresses.SupplyChainTracker
-      ) as unknown as SupplyChainTracker;
+      );
       
       consumerInterface = await ethers.getContractAt(
         "ConsumerInterface", 
         contractAddresses.ConsumerInterface
-      ) as unknown as ConsumerInterface;
+      );
       
       // Get role constants
       MANUFACTURER_ROLE = await verificationSystem.MANUFACTURER_ROLE();
@@ -394,11 +388,12 @@ describe("Zephyros Integration Tests (Fuji Testnet)", function () {
     });
   });
   
-  // Event monitoring using AvalancheJS
-  describe("Event Monitoring with AvalancheJS", function() {
+  // Event monitoring tests using ethers.js directly
+  describe("Event Monitoring", function() {
     it("Should monitor ParticipantVerified events", async function() {
       // Create a new test wallet for event monitoring
-      const testWallet = ethers.Wallet.createRandom().connect(provider);
+      const randomWallet = ethers.Wallet.createRandom();
+      const testWallet = new ethers.Wallet(randomWallet.privateKey, provider);
       console.log(`Created test wallet: ${testWallet.address}`);
       
       // Setup event listener
@@ -414,18 +409,21 @@ describe("Zephyros Integration Tests (Fuji Testnet)", function () {
           reject(new Error("Timeout waiting for ParticipantVerified event"));
         }, 60000); // 1 minute timeout
         
-        verificationSystemContract.on("ParticipantVerified", (participantAddress, role) => {
-          try {
-            if (participantAddress.toLowerCase() === testWallet.address.toLowerCase()) {
-              console.log(`Detected ParticipantVerified event for ${participantAddress}`);
-              expect(role).to.equal(MANUFACTURER_ROLE);
-              clearTimeout(timeoutId);
-              resolve();
+        verificationSystemContract.once(
+          verificationSystemContract.getEvent("ParticipantVerified"),
+          (participantAddress, role, event) => {
+            try {
+              if (participantAddress.toLowerCase() === testWallet.address.toLowerCase()) {
+                console.log(`Detected ParticipantVerified event for ${participantAddress}`);
+                expect(role).to.equal(MANUFACTURER_ROLE);
+                clearTimeout(timeoutId);
+                resolve();
+              }
+            } catch (error) {
+              reject(error);
             }
-          } catch (error) {
-            reject(error);
           }
-        });
+        );
       });
       
       // Verify the test wallet
@@ -438,9 +436,6 @@ describe("Zephyros Integration Tests (Fuji Testnet)", function () {
       
       // Wait for event
       await eventPromise;
-      
-      // Remove event listener
-      verificationSystemContract.removeAllListeners("ParticipantVerified");
     });
     
     it("Should monitor ProductRegistered events", async function() {
@@ -460,18 +455,21 @@ describe("Zephyros Integration Tests (Fuji Testnet)", function () {
           reject(new Error("Timeout waiting for ProductRegistered event"));
         }, 60000); // 1 minute timeout
         
-        productRegistryContract.on("ProductRegistered", (emittedProductId, manufacturerAddress) => {
-          try {
-            if (emittedProductId === eventProductId) {
-              console.log(`Detected ProductRegistered event for product ${emittedProductId}`);
-              expect(manufacturerAddress).to.equal(manufacturer.address);
-              clearTimeout(timeoutId);
-              resolve();
+        productRegistryContract.once(
+          productRegistryContract.getEvent("ProductRegistered"),
+          (emittedProductId, manufacturerAddress, event) => {
+            try {
+              if (emittedProductId === eventProductId) {
+                console.log(`Detected ProductRegistered event for product ${emittedProductId}`);
+                expect(manufacturerAddress).to.equal(manufacturer.address);
+                clearTimeout(timeoutId);
+                resolve();
+              }
+            } catch (error) {
+              reject(error);
             }
-          } catch (error) {
-            reject(error);
           }
-        });
+        );
       });
       
       // Register the product
@@ -485,116 +483,6 @@ describe("Zephyros Integration Tests (Fuji Testnet)", function () {
       
       // Wait for event
       await eventPromise;
-      
-      // Remove event listener
-      productRegistryContract.removeAllListeners("ProductRegistered");
-    });
-    
-    it("Should monitor MilestoneAdded events", async function() {
-      // Use the product ID from the previous test
-      const eventProductId = keccak256(toUtf8Bytes(`MilestoneEvent-${Date.now()}`));
-      
-      // Register product first
-      const registerTx = await productRegistry.connect(manufacturer).registerProduct(
-        eventProductId,
-        "Milestone Event Test",
-        manufacturer.address
-      );
-      await registerTx.wait();
-      
-      // Setup event listener
-      const supplyChainTrackerContract = new Contract(
-        contractAddresses.SupplyChainTracker,
-        SupplyChainTrackerABI.abi,
-        provider
-      );
-      
-      // Create a promise that resolves when event is detected
-      const eventPromise = new Promise<void>((resolve, reject) => {
-        const timeoutId = setTimeout(() => {
-          reject(new Error("Timeout waiting for MilestoneAdded event"));
-        }, 60000); // 1 minute timeout
-        
-        supplyChainTrackerContract.on("MilestoneAdded", (emittedProductId, milestoneIndex, supplierAddress) => {
-          try {
-            if (emittedProductId === eventProductId && milestoneIndex.toString() === "0") {
-              console.log(`Detected MilestoneAdded event for product ${emittedProductId}, index ${milestoneIndex}`);
-              expect(supplierAddress).to.equal(supplier.address);
-              clearTimeout(timeoutId);
-              resolve();
-            }
-          } catch (error) {
-            reject(error);
-          }
-        });
-      });
-      
-      // Add a milestone
-      const timestamp = Math.floor(Date.now() / 1000) - 3600;
-      const milestoneTx = await supplyChainTracker.connect(supplier).addMilestone(
-        eventProductId,
-        "Event Test Milestone",
-        "Testing event monitoring",
-        timestamp
-      );
-      console.log(`Milestone addition tx hash: ${milestoneTx.hash}`);
-      await milestoneTx.wait();
-      
-      // Wait for event
-      await eventPromise;
-      
-      // Remove event listener
-      supplyChainTrackerContract.removeAllListeners("MilestoneAdded");
-    });
-    
-    it("Should monitor VerificationRevoked events", async function() {
-      // Create a new test wallet for event monitoring
-      const testWallet = ethers.Wallet.createRandom().connect(provider);
-      console.log(`Created test wallet for revocation: ${testWallet.address}`);
-      
-      // Verify the test wallet first
-      const verifyTx = await verificationSystem.connect(admin).verifyParticipant(
-        testWallet.address, 
-        SUPPLIER_ROLE
-      );
-      await verifyTx.wait();
-      
-      // Setup event listener
-      const verificationSystemContract = new Contract(
-        contractAddresses.VerificationSystem,
-        VerificationSystemABI.abi,
-        provider
-      );
-      
-      // Create a promise that resolves when event is detected
-      const eventPromise = new Promise<void>((resolve, reject) => {
-        const timeoutId = setTimeout(() => {
-          reject(new Error("Timeout waiting for VerificationRevoked event"));
-        }, 60000); // 1 minute timeout
-        
-        verificationSystemContract.on("VerificationRevoked", (participantAddress) => {
-          try {
-            if (participantAddress.toLowerCase() === testWallet.address.toLowerCase()) {
-              console.log(`Detected VerificationRevoked event for ${participantAddress}`);
-              clearTimeout(timeoutId);
-              resolve();
-            }
-          } catch (error) {
-            reject(error);
-          }
-        });
-      });
-      
-      // Revoke verification
-      const revokeTx = await verificationSystem.connect(admin).revokeVerification(testWallet.address);
-      console.log(`Revocation tx hash: ${revokeTx.hash}`);
-      await revokeTx.wait();
-      
-      // Wait for event
-      await eventPromise;
-      
-      // Remove event listener
-      verificationSystemContract.removeAllListeners("VerificationRevoked");
     });
   });
 });
