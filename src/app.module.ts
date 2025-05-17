@@ -43,6 +43,11 @@ import authConfig from './config/auth.config';
     HealthModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    {
+      provide: 'APP_GUARD',
+      useClass: ThrottlerModule,
+    }
+  ],
 })
 export class AppModule {}

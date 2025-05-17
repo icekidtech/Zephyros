@@ -54,8 +54,12 @@ export class MilestonesService {
   async getMilestonesByProduct(productId: string): Promise<Milestone[]> {
     return this.milestoneModel.find({ product: productId }).exec();
   }
-
   async getBlockchainHistory(productId: string): Promise<string[]> {
-    return this.smartContractService.getProductHistory(productId);
+    try {
+      return await this.smartContractService.getProductHistory(productId);
+    } catch (error) {
+      console.error(`Failed to get blockchain history for product ${productId}:`, error.message);
+      return []; // Return empty array if blockchain query fails
+    }
   }
 }

@@ -7,13 +7,10 @@ import { Product, ProductSchema } from '../products/product.schema';
 import { Milestone, MilestoneSchema } from '../milestones/milestone.schema';
 
 @Module({
-  imports: [
-    MongooseModule.forRootAsync({
+  imports: [    MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         uri: configService.get<string>('MONGO_URI'),
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
       }),
     }),
     MongooseModule.forFeature([

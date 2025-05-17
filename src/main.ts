@@ -4,7 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingService } from './logging/logging.service';
-import { ThrottlerGuard, ThrottlerException } from '@nestjs/throttler';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -19,14 +19,6 @@ async function bootstrap() {
   // Initialize LoggingService for the exception filter
   const logger = app.get(LoggingService);
   app.useGlobalFilters(new GlobalExceptionFilter(logger));
-
-  // Enable rate limiting
-  app.useGlobalGuards(new ThrottlerGuard({
-    errorMessage: 'Too many requests, please try again later',
-    throwOnLimit: true,
-    skipIf: () => false,
-    onLimit: () => { throw new ThrottlerException(); }
-  }));
 
   // Enable global validation pipe
   app.useGlobalPipes(
@@ -58,7 +50,7 @@ async function bootstrap() {
     },
   });
 
-  const port = process.env.PORT;
+  const port = process.env.PORT || 3000;
   await app.listen(port, () => {
     console.info(`Server running successfully on Port ${port}`);
   });

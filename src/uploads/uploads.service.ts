@@ -20,10 +20,8 @@ export class UploadsService {
    * Returns Multer options configured for GridFS storage,
    * including file size limits and MIME filtering.
    */
-  getMulterOptions(): MulterModuleOptions {
-    const storage = new GridFsStorage({
+  getMulterOptions(): MulterModuleOptions {    const storage = new GridFsStorage({
       url: this.mongoUri,
-      options: { useNewUrlParser: true, useUnifiedTopology: true },
       file: (_req, file) => ({
         filename: file.originalname,
         bucketName: this.bucketName,

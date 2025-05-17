@@ -2,8 +2,7 @@
 import { Controller, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadsService } from './uploads.service';
-import { GridFsStorage } from 'multer-gridfs-storage';
-import * as multer from 'multer';
+import { Express } from 'express';
 
 @Controller('uploads')
 export class UploadsController {
@@ -12,16 +11,7 @@ export class UploadsController {
   @Post()
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: new GridFsStorage({
-        url: 'mongodb+srv://endiejames123:pass1@cluster0.od5upzb.mongodb.net/zephyrosdb',
-        options: { useNewUrlParser: true, useUnifiedTopology: true },
-        file: (req, file) => {
-          return {
-            filename: file.originalname,
-            bucketName: 'uploads',
-          };
-        },
-      }),
+      // We need to use memory storage to get the buffer for GridFS
       limits: { fileSize: 5 * 1024 * 1024 }, // Limit file size to 5MB
       fileFilter: (req, file, cb) => {
         if (!file.mimetype.startsWith('image/')) {
@@ -31,14 +21,14 @@ export class UploadsController {
       },
     }),
   )
-  async uploadFile(@UploadedFile() file: any) {
+  async uploadFile(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new Error('File upload failed');
     }
 
-    // Extract the file ID from the metadata
-    const fileId = file.id || file._id; // GridFS may use _id instead of id
-
-    return { fileId, filename: file.filename };
+    // Use the uploadFile method from your service
+    const fileId = await this.uploadsService.uploadFile(file);
+    
+    return { fileId, filename: file.originalname };
   }
 }
