@@ -1,10 +1,9 @@
-
 import { Injectable, ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
-import { User, UserDocument } from '../users/user.schema';
+import { User, UserDocument, UserRole } from '../users/user.schema';
 import { JwtService } from '@nestjs/jwt';
 import { LoginUserDto } from './dto/login-user.dto';
 
@@ -37,7 +36,7 @@ export class UserService {
     if (!user || !(await bcrypt.compare(password, user.password))) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    const payload = { id: user._id, role: user.role }; // Include necessary user details in payload
+    const payload = { userId: user._id, role: user.role }; // Include necessary user details in payload
     const accessToken = await this.jwtService.sign(payload); // Sign the payload to create a token
 
     return {
@@ -54,17 +53,39 @@ export class UserService {
   }
 
   async findById(id: string): Promise<User> {
-    return this.userModel.findById(id);
-  }
-
-  async findAll(): Promise<User[]> {
-    return this.userModel.find().select('-password');
-  }
-
-  async updateUser(id: string, updateUserDto: Partial<CreateUserDto>): Promise<User> {
-    const user = await this.userModel.findByIdAndUpdate(id, updateUserDto, { new: true });
+    const user = await this.userModel.findById(id);
     if (!user) throw new NotFoundException('User not found');
     return user;
+  }
+
+  async findAll(role?: UserRole): Promise<User[]> {
+    const query = role ? { role } : {};
+    return this.userModel.find(query).select('-password');
+  }
+
+  async updateUser(id: string, updateUserDto: any): Promise<User> {
+    // If password is included, hash it before updating
+    if (updateUserDto.password) {
+      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    }
+    
+    const user = await this.userModel.findByIdAndUpdate(id, updateUserDto, { new: true });
+    if (!user) throw new NotFoundException('User not found');
+    
+    // Remove password from response
+    const userObject = user.toObject();
+    delete userObject.password;
+    return userObject;
+  }
+
+  async updateUserRole(id: string, role: UserRole): Promise<User> {
+    const user = await this.userModel.findByIdAndUpdate(id, { role }, { new: true });
+    if (!user) throw new NotFoundException('User not found');
+    
+    // Remove password from response
+    const userObject = user.toObject();
+    delete userObject.password;
+    return userObject;
   }
 
   async deleteUser(id: string): Promise<User> {
