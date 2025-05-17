@@ -11,6 +11,7 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "incremental": true,
+    "typeRoots": ["./node_modules/@types", "./src/types"],
     "plugins": [
       {
         "name":"@nestjs/swagger",

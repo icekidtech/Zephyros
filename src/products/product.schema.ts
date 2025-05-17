@@ -14,6 +14,12 @@ export class Product {
 
   @Prop({ type: Types.ObjectId, ref: 'Organization', required: true })
   organization: Types.ObjectId;
+
+  @Prop()
+  qrCode?: string;
+
+  @Prop()
+  image?: string;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);

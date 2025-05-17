@@ -12,11 +12,10 @@ import { ConfigService } from '@nestjs/config';
     MongooseModule.forFeature([{ name: 'User', schema: UserSchema }]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
-      global:true,
       inject: [ConfigService],
-      useFactory:(ConfigService:ConfigService) => ({
-        secret: ConfigService.getOrThrow('JWT_SECRET'),
-        signOptions: { expiresIn: '1d' }, //Token will last for a day
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET'),
+        signOptions: { expiresIn: '1d' },
       }),
     }),
   ],

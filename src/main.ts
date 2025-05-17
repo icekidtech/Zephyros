@@ -2,9 +2,31 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
+import { LoggingService } from './logging/logging.service';
+import { ThrottlerGuard, ThrottlerException } from '@nestjs/throttler';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  
+  // Enable CORS
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN || '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
+
+  // Initialize LoggingService for the exception filter
+  const logger = app.get(LoggingService);
+  app.useGlobalFilters(new GlobalExceptionFilter(logger));
+
+  // Enable rate limiting
+  app.useGlobalGuards(new ThrottlerGuard({
+    errorMessage: 'Too many requests, please try again later',
+    throwOnLimit: true,
+    skipIf: () => false,
+    onLimit: () => { throw new ThrottlerException(); }
+  }));
 
   // Enable global validation pipe
   app.useGlobalPipes(
