@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ethers } from 'ethers';
 import { BlockchainService } from './blockchain.service';
 import { ConfigService } from '@nestjs/config';
@@ -6,6 +6,9 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class SmartContractService {
   private contract: ethers.Contract;
+  private readonly logger = new Logger(SmartContractService.name);
+  private readonly maxRetries = 3;
+  
   constructor(
     private readonly blockchainService: BlockchainService,
     private readonly configService: ConfigService,
@@ -27,12 +30,12 @@ export class SmartContractService {
           contractABI,
           this.blockchainService['wallet']
         );
-        console.info('Smart contract initialized successfully');
+        this.logger.log('Smart contract initialized successfully');
       } catch (error) {
-        console.error('Failed to initialize smart contract:', error.message);
+        this.logger.error(`Failed to initialize smart contract: ${error.message}`, error.stack);
       }
     } else {
-      console.warn(
+      this.logger.warn(
         'Smart contract not initialized. Missing ' +
         (!contractAddress ? 'contract address' : 'wallet initialization')
       );
@@ -41,32 +44,47 @@ export class SmartContractService {
   
   async recordMilestone(productId: string, milestone: string): Promise<ethers.TransactionResponse | null> {
     if (!this.contract) {
-      console.warn('Cannot record milestone: Smart contract not initialized');
+      this.logger.warn('Cannot record milestone: Smart contract not initialized');
       return null;
     }
     
-    try {
-      return await this.contract.recordMilestone(
-        productId,
-        milestone,
-        Math.floor(Date.now() / 1000)
-      );
-    } catch (error) {
-      console.error(`Failed to record milestone for product ${productId}:`, error.message);
-      throw new Error(`Blockchain transaction failed: ${error.message}`);
+    let attempts = 0;
+    while (attempts < this.maxRetries) {
+      try {
+        const tx = await this.contract.recordMilestone(
+          productId,
+          milestone,
+          Math.floor(Date.now() / 1000)
+        );
+        
+        // Wait for transaction to be mined (1 confirmation)
+        await tx.wait(1);
+        this.logger.log(`Successfully recorded milestone for product ${productId}. TX Hash: ${tx.hash}`);
+        return tx;
+      } catch (error) {
+        attempts++;
+        if (attempts >= this.maxRetries) {
+          this.logger.error(`Failed to record milestone for product ${productId} after ${this.maxRetries} attempts: ${error.message}`, error.stack);
+          throw new Error(`Blockchain transaction failed: ${error.message}`);
+        }
+        this.logger.warn(`Attempt ${attempts}/${this.maxRetries} failed. Retrying...`);
+        // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempts)));
+      }
     }
+    return null;
   }
 
   async getProductHistory(productId: string): Promise<string[]> {
     if (!this.contract) {
-      console.warn('Cannot get product history: Smart contract not initialized');
+      this.logger.warn('Cannot get product history: Smart contract not initialized');
       return [];
     }
     
     try {
       return await this.contract.getProductHistory(productId);
     } catch (error) {
-      console.error(`Failed to get product history for ${productId}:`, error.message);
+      this.logger.error(`Failed to get product history for ${productId}: ${error.message}`, error.stack);
       throw new Error(`Blockchain query failed: ${error.message}`);
     }
   }

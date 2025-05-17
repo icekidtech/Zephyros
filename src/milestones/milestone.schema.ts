@@ -17,6 +17,29 @@ export class Milestone {
 
   @Prop({ default: 'pending' })
   status: 'pending' | 'approved' | 'rejected';
+  
+  @Prop()
+  location?: string;
+  
+  @Prop()
+  blockchainTxHash?: string;
+  
+  @Prop()
+  verificationMethod?: 'manual' | 'iot' | 'qr';
+  
+  @Prop({ type: [{ type: Object }], default: [] })
+  statusHistory: Array<{
+    status: string;
+    timestamp: Date;
+    updatedBy?: Types.ObjectId;
+    notes?: string;
+  }>;
+
+  @Prop({ type: Map, of: String })
+  metadata: Map<string, string>;
+  
+  @Prop({ type: [String], default: [] })
+  attachments: string[];
 }
 
 export const MilestoneSchema = SchemaFactory.createForClass(Milestone);

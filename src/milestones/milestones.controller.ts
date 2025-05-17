@@ -7,14 +7,16 @@ import {
   Put, 
   UseGuards,
   UploadedFile,
-  UseInterceptors
+  UseInterceptors,
+  Query
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { MilestonesService } from './milestones.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UploadsService } from '../uploads/uploads.service';
 import { CreateMilestoneDto } from './dto/create-milestone.dto';
+import { CreateMilestonesDto } from './dto/create-milestones.dto';
 
 @ApiTags('milestones')
 @ApiBearerAuth()
@@ -46,8 +48,12 @@ export class MilestonesController {
   @Get('product/:productId')
   @ApiOperation({ summary: 'Get all milestones for a product' })
   @ApiResponse({ status: 200, description: 'Product milestones retrieved successfully' })
-  async getMilestonesByProduct(@Param('productId') productId: string) {
-    return this.milestonesService.getMilestonesByProduct(productId);
+  @ApiQuery({ name: 'status', required: false, enum: ['pending', 'approved', 'rejected'] })
+  async getMilestonesByProduct(
+    @Param('productId') productId: string,
+    @Query('status') status?: 'pending' | 'approved' | 'rejected'
+  ) {
+    return this.milestonesService.getMilestonesByProduct(productId, status);
   }
 
   @Get('product/:productId/blockchain-history')
@@ -66,5 +72,20 @@ export class MilestonesController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     return this.uploadsService.uploadMilestoneDocument(id, file);
+  }
+  
+  @Get(':id/verify')
+  @ApiOperation({ summary: 'Verify milestone authenticity on blockchain' })
+  @ApiResponse({ status: 200, description: 'Milestone verification status' })
+  async verifyMilestone(@Param('id') id: string) {
+    return this.milestonesService.verifyMilestone(id);
+  }
+    @Post('bulk')
+  @ApiOperation({ summary: 'Create multiple milestones in batch' })
+  @ApiResponse({ status: 201, description: 'Milestones created successfully' })
+  async createMilestones(@Body() createMilestonesDto: CreateMilestonesDto) {
+    return Promise.all(
+      createMilestonesDto.milestones.map(dto => this.milestonesService.createMilestone(dto))
+    );
   }
 }

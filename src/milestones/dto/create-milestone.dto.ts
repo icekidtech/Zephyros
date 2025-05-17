@@ -1,5 +1,10 @@
-import { IsNotEmpty, IsString, IsOptional, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsEnum, IsObject, ValidateNested, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+
+class MetadataDto {
+  [key: string]: string;
+}
 
 export class CreateMilestoneDto {
   @ApiProperty({ example: 'Product Manufactured', description: 'Title of the milestone' })
@@ -21,4 +26,24 @@ export class CreateMilestoneDto {
   @IsEnum(['pending', 'approved', 'rejected'])
   @IsOptional()
   status?: 'pending' | 'approved' | 'rejected' = 'pending';
+  
+  @ApiProperty({ example: 'Los Angeles, CA', description: 'Location where the milestone occurred', required: false })
+  @IsOptional()
+  @IsString()
+  location?: string;
+  
+  @ApiProperty({ example: 'manual', description: 'Method used to verify this milestone', enum: ['manual', 'iot', 'qr'], required: false })
+  @IsEnum(['manual', 'iot', 'qr'])
+  @IsOptional()
+  verificationMethod?: 'manual' | 'iot' | 'qr';
+  
+  @ApiProperty({ 
+    example: { batchNumber: '12345', temperature: '72°F' }, 
+    description: 'Additional metadata about this milestone',
+    required: false
+  })
+  @IsOptional()
+  @IsObject()
+  @Type(() => MetadataDto)
+  metadata?: Record<string, string>;
 }
