@@ -1,5 +1,6 @@
 export enum UserRoles {
   Admin = 'admin',
-  Organization = 'organization',
-  Verifier = 'verifier',
+  Manufacturer = 'manufacturer',
+  Supplier = 'supplier',
+  Consumer = 'consumer',
 }
