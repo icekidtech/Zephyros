@@ -20,6 +20,21 @@ export class Product {
 
   @Prop()
   image?: string;
+  
+  @Prop()
+  sku?: string;
+  
+  @Prop()
+  batchNumber?: string;
+  
+  @Prop({ type: Date })
+  manufacturingDate?: Date;
+  
+  @Prop({ type: Date })
+  expiryDate?: Date;
+  
+  @Prop({ type: Object })
+  metadata?: Record<string, any>;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);
